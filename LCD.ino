@@ -1,11 +1,10 @@
 #include<LiquidCrystal_I2C.h>
+#include "RTClib.h"
 
 #define DEBUG Serial.print("\nIN: "); Serial.print(__func__); Serial.print(" ON LINE: "); Serial.print(__LINE__)
 #define MENUSIZE 4
 #define ENABLED true
-#define DISABLED false
-
-unsigned long currentMillis;  
+#define DISABLED false 
 
 class Button{
   
@@ -44,7 +43,6 @@ class Button{
     }
 
     void lock(){
-      DEBUG;
       state = DISABLED;
     }
 
@@ -60,11 +58,15 @@ class Display{
     Button showPrevious;
     Button lockButton;
     LiquidCrystal_I2C lcd; 
-    static const byte clearAfter = 3;      
-    uint32_t previousMillis = 0;
-    unsigned long duration;
+    RTC_DS1307 rtc;
 
-    String menu[MENUSIZE] = {"Page ONE \nData1", "Page Two \nData2", "Page Three \nData3", "Page Four \nData4"};
+    char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+    typedef struct TIME{
+      byte month, day, hour, minute;
+    };
+    TIME Time;
+
+    String menu[MENUSIZE] = {"Date: ", "Current Time: ", "Page Three \nData3", "Page Four \nData4"};
     byte currentMenuPage = 0;
     public:
       Display(byte nextPin, byte previousPin, byte lockPin, byte lcdAddr, byte cols, byte rows) : showNext{nextPin},  showPrevious{previousPin}, lockButton{lockPin}, lcd(lcdAddr, cols, rows) {}
@@ -77,23 +79,28 @@ class Display{
         lcd.init();                      // initialize the lcd
         // Print a message to the LCD.
         lcd.backlight();
+        if (! rtc.begin()) {
+          Serial.println("Couldn't find RTC");
+          Serial.flush();
+          abort();
+        }
         showIdle();
       }
 
       void showIdle(){
         lcd.clear();
         lcd.print(menu[currentMenuPage]);
+        printDate();
       }
 
       unsigned long durationCalculator(){
-        unsigned long duration = 0;
         bool started = false;
-        unsigned long currentTime = 0, endTime = 0;
+        unsigned long startTime = 0, endTime = 0;
 
         do{
           if (!started && digitalRead(lockButton.buttonPin) == LOW){
             started = true;
-            currentTime = millis();
+            startTime = millis();
           }
           
           if (started && digitalRead(lockButton.buttonPin) == HIGH)
@@ -114,8 +121,7 @@ class Display{
           Serial.println(endTime);
           Serial.print("DURATION IN CALC: ");
           Serial.println(duration);*/
-          duration = endTime - currentTime;
-          return duration;
+          return endTime - startTime;
         }  
       }
 
@@ -134,6 +140,28 @@ class Display{
         }
       }
 
+      void getTime(){
+        DateTime currentTime = rtc.now();
+        Time.hour = currentTime.hour();
+        Time.minute = currentTime.minute();
+        Time.day = currentTime.day();
+        Time.month = currentTime.month();
+      }
+
+      void printDate(){
+        getTime();
+        lcd.print(Time.day);
+        lcd.print("/");
+        lcd.print(Time.month);
+      }
+
+      void printTime(){
+        getTime();
+        lcd.print(Time.hour);
+        lcd.print(":");
+        lcd.print(Time.minute);
+      }
+
       void update(){
         if (lockButton.wasPressed()){
           Serial.println("\nLOCK BUTTON WAS PRESSED!\n");
@@ -142,19 +170,55 @@ class Display{
 
         if (showNext.wasPressed() && showNext.state == ENABLED){
           lcd.clear();     
-          if (currentMenuPage == MENUSIZE - 1) currentMenuPage = -1;
-          lcd.print(menu[++currentMenuPage]);
+          if (currentMenuPage >= MENUSIZE) currentMenuPage = 0;
+          Serial.println(currentMenuPage);
+          switch (currentMenuPage) {
+            case 0:
+              lcd.clear();
+              lcd.print(menu[currentMenuPage]);
+              printDate();
+              currentMenuPage++;
+              break;
+            case 1:
+              lcd.clear();
+              lcd.print(menu[currentMenuPage]);
+              printTime();
+              currentMenuPage++;
+              break;
+            default:
+              lcd.print(menu[currentMenuPage]);
+              currentMenuPage++;
+              break;
+          }
         }
 
-        if (showPrevious.wasPressed() && showNext.state == ENABLED){
-          lcd.clear();
-          if (currentMenuPage == 0) currentMenuPage = MENUSIZE;
-          lcd.print(menu[--currentMenuPage]);
+        if (showPrevious.wasPressed() && showPrevious.state == ENABLED){
+          lcd.clear();     
+          if (currentMenuPage >= 255) currentMenuPage = MENUSIZE - 1;
+          Serial.println(currentMenuPage);
+          switch (currentMenuPage) {
+            case 0:
+              lcd.clear();
+              lcd.print(menu[currentMenuPage]);
+              printDate();
+              currentMenuPage--;
+              break;
+            case 1:
+              lcd.clear();
+              lcd.print(menu[currentMenuPage]);
+              printTime();
+              currentMenuPage--;
+              break;
+            default:
+              lcd.print(menu[currentMenuPage]);
+              currentMenuPage--;
+              break;
+          }
         }
       }
 };
 
-Display display{A0, A1, A2, 0x25, 20, 4};
+Display display{13, 7, 4, 0x25, 20, 4};
 
 void setup()
 {
