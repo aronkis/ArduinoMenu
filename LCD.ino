@@ -114,8 +114,7 @@ class Display{
 
       void showIdle(){
         lcd.clear();
-        lcd.print(menu[currentMenuPage]);
-        printDate();
+        lcd.print("      WELCOME");
       }
 
       unsigned long durationCalculator(){
@@ -200,44 +199,60 @@ class Display{
           switch (currentMenuPage) {
             case 0:
               lcd.clear();
-              ++currentMenuPage;
               lcd.print(menu[currentMenuPage]);
+              ++currentMenuPage;
               printDate();
-              
               break;
             case 1:
               lcd.clear();
-              ++currentMenuPage;
               lcd.print(menu[currentMenuPage]);
+              ++currentMenuPage;
               printTime();
               break;
-            default:
-              ++currentMenuPage;
+            case 2:
+              lcd.clear();
               lcd.print(menu[currentMenuPage]);
+              ++currentMenuPage;
+              break;
+            case 3:
+              lcd.clear();
+              lcd.print(menu[currentMenuPage]);
+              ++currentMenuPage;
               break;
           }
         }
 
         if (showPrevious.wasPressed() && showPrevious.state == ENABLED){
           lcd.clear();     
-          if (currentMenuPage >= 255) currentMenuPage = MENUSIZE - 1;
+          if (currentMenuPage >= 255) 
+          {
+            currentMenuPage = MENUSIZE - 1;
+            DEBUG;
+          }
+
           Serial.println(currentMenuPage);
           switch (currentMenuPage) {
             case 0:
               lcd.clear();
-              --currentMenuPage;
               lcd.print(menu[currentMenuPage]);
+              --currentMenuPage;
               printDate();
               break;
             case 1:
-              lcd.clear();
-              currentMenuPage--;
+              lcd.clear(); 
               lcd.print(menu[currentMenuPage]);
+              currentMenuPage--;
               printTime();
               break;
-            default:
-              currentMenuPage--;
+            case 2:
+              lcd.clear();
               lcd.print(menu[currentMenuPage]);
+              --currentMenuPage;
+              break;
+            case 3:
+              lcd.clear();
+              lcd.print(menu[currentMenuPage]);
+              --currentMenuPage;
               break;
           }
         }
@@ -334,6 +349,8 @@ void loop()
 
   distance = getDistance();
   temperature = getTemperature();
+  if (temperature > 30)
+    Serial.println("WARNING");
   
   //Serial.print("Distance: ");
   //Serial.print(distance);
