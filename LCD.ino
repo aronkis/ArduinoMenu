@@ -191,7 +191,7 @@ class Display{
           Serial.println("\nLOCK BUTTON WAS PRESSED!\n");
           ButtonLocker();
         }
-
+        /// DEBUGGING REQUIRED
         if (showNext.wasPressed() && showNext.state == ENABLED){
           lcd.clear();     
           if (currentMenuPage >= MENUSIZE) currentMenuPage = 0;
