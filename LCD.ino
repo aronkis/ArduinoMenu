@@ -1,10 +1,35 @@
 #include<LiquidCrystal_I2C.h>
 #include "RTClib.h"
+#include<Servo.h>
 
+#define sleep delay(1000)
 #define DEBUG Serial.print("\nIN: "); Serial.print(__func__); Serial.print(" ON LINE: "); Serial.print(__LINE__)
 #define MENUSIZE 4
 #define ENABLED true
 #define DISABLED false 
+
+#define red_light_pin (int)11
+#define green_light_pin (int)10
+#define blue_light_pin (int)9
+
+#define echoPin 2 
+#define trigPin 3
+
+#define servoPin 6
+#define servoButtonPin 7
+
+#define temperaturePin A3
+#define BETA (float)3950
+
+Servo myservo;
+int32_t pos = 1;
+
+void RGB_color(int red_light_value, int green_light_value, int blue_light_value)
+ {
+  analogWrite(red_light_pin, red_light_value);
+  analogWrite(green_light_pin, green_light_value);
+  analogWrite(blue_light_pin, blue_light_value);
+}
 
 class Button{
   
@@ -175,19 +200,20 @@ class Display{
           switch (currentMenuPage) {
             case 0:
               lcd.clear();
+              ++currentMenuPage;
               lcd.print(menu[currentMenuPage]);
               printDate();
-              currentMenuPage++;
+              
               break;
             case 1:
               lcd.clear();
+              ++currentMenuPage;
               lcd.print(menu[currentMenuPage]);
               printTime();
-              currentMenuPage++;
               break;
             default:
+              ++currentMenuPage;
               lcd.print(menu[currentMenuPage]);
-              currentMenuPage++;
               break;
           }
         }
@@ -199,34 +225,126 @@ class Display{
           switch (currentMenuPage) {
             case 0:
               lcd.clear();
+              --currentMenuPage;
               lcd.print(menu[currentMenuPage]);
               printDate();
-              currentMenuPage--;
               break;
             case 1:
               lcd.clear();
+              currentMenuPage--;
               lcd.print(menu[currentMenuPage]);
               printTime();
-              currentMenuPage--;
               break;
             default:
-              lcd.print(menu[currentMenuPage]);
               currentMenuPage--;
+              lcd.print(menu[currentMenuPage]);
               break;
           }
         }
       }
 };
 
-Display display{13, 7, 4, 0x25, 20, 4};
+void moveServo(){
+
+  if (pos == 1){
+    myservo.write(0);
+    sleep;
+    myservo.write(90);
+    pos = 2;
+    // Serial.println(pos, DEC);   
+    }
+  else if (pos == 2){
+    myservo.write(180);
+    sleep;
+    myservo.write(90);
+    pos = 1;  
+  }
+
+}
+
+void setLeds(){
+  pinMode(red_light_pin, OUTPUT);
+  pinMode(green_light_pin, OUTPUT);
+  pinMode(blue_light_pin, OUTPUT);
+}
+
+void setSensors(){
+  pinMode(trigPin, OUTPUT); 
+  pinMode(echoPin, INPUT); 
+}
+
+void setServo(){
+  myservo.attach(servoPin);
+  myservo.write(90);
+  
+}
+
+Display display{13, 8, 4, 0x25, 20, 4};
+
+Button servoButton(servoButtonPin);
+long duration;
+int distance;
+int analogValue;
+float temperature;
 
 void setup()
 {
-  Serial.begin(115200);
+  //Serial.begin(115200);
+  Serial.begin(9600); 
+  
+  setLeds();
+  setSensors();
+  setServo();
+
   display.begin();
+}
+
+int getDistance(){
+  // Clears the trigPin condition
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+  // Calculating the distance
+  return duration * 0.034 / 2; // Speed of sound wave divided by 2 (go and back)
+
+}
+
+void setRGBColor(){
+  if (distance > 0 && distance < 100)
+  	RGB_color(0, 255, 0); // Red
+  else if (distance >= 100 && distance < 200)
+    RGB_color(255,255,0);
+   else if(distance >= 200 && distance < 300)
+    RGB_color(255,0,0);
+}
+
+float getTemperature(){
+  analogValue = analogRead(temperaturePin);
+  return 1 / (log(1 / (1023. / analogValue - 1)) / BETA + 1.0 / 298.15) - 273.15;
 }
 
 void loop()
 {
   display.update();
+
+  distance = getDistance();
+  temperature = getTemperature();
+  
+  //Serial.print("Distance: ");
+  //Serial.print(distance);
+  //Serial.println(" cm");
+
+  // Serial.print("Temperature: ");
+  // Serial.print(temperature);
+  // Serial.println(" ℃");
+
+  if(servoButton.wasPressed())
+    moveServo();
+  
+  setRGBColor();
 }
