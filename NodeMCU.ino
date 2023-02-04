@@ -2,8 +2,8 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 
-const char *ssid = "Redmi Note 10 5G";
-const char *password = "danana123";
+const char *ssid = "";
+const char *password = "";
 
 String dataFromServer[4];
 String feedingTimes[6];
